@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q-Learning Bench</title>
+<style>
+  :root{
+    --bg:#f6f5f2; --panel:#fff; --ink:#1b1d21; --muted:#6b7280; --line:#dcd9d2;
+    --accent:#9b1b30; --accent2:#1f4e79; --good:#2e7d32; --warn:#b26a00;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45}
+  header{padding:14px 22px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0;font-size:19px;letter-spacing:-.01em}
+  h1 span{color:var(--muted);font-weight:400}
+  nav{display:flex;gap:4px;padding:10px 22px 0;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  nav button{border:1px solid var(--line);border-bottom:none;background:#efece7;color:var(--muted);
+    padding:8px 15px;font-size:14px;font-weight:600;cursor:pointer;border-radius:7px 7px 0 0;
+    font-family:inherit;position:relative;top:1px}
+  nav button.on{background:var(--panel);color:var(--ink);box-shadow:inset 0 3px 0 var(--accent)}
+  main{padding:16px 22px 44px;max-width:1620px;margin:0 auto}
+  .tab{display:none}.tab.on{display:block}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:14px}
+  .card h2{margin:0 0 9px;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .banner{background:#fdf6e3;border:1px solid #e8d9a8;border-radius:8px;padding:10px 14px;font-size:13.5px;margin-bottom:14px}
+  .banner b{color:var(--accent)}
+  .grid{display:grid;grid-template-columns:1fr 400px;gap:16px;align-items:start}
+  @media (max-width:1180px){.grid{grid-template-columns:1fr}}
+
+  .ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+  .ctl label{font-size:13px;color:var(--muted);font-weight:600}
+  button.act{border:1px solid var(--line);background:#fff;padding:6px 13px;border-radius:6px;
+    font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  button.act:hover{background:#f3f1ec}
+  button.act.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.act.pri:hover{filter:brightness(1.1)}
+  button.act:disabled{opacity:.45;cursor:default}
+  .pill{font-family:var(--mono);font-size:12.5px;background:#f1efea;border:1px solid var(--line);
+    padding:3px 8px;border-radius:20px}
+  select{padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:13px}
+  input[type=range]{width:96px}
+  .val{font-family:var(--mono);font-size:12.5px;min-width:46px;display:inline-block}
+
+  table.dp{border-collapse:collapse;font-family:var(--mono);font-size:11px}
+  table.dp th{font-weight:600;color:var(--muted);font-size:10.5px;padding:2px 4px;font-family:var(--sans)}
+  table.dp td{width:26px;height:17px;text-align:center;border:1px solid #fff;color:#1b1d21}
+  table.dp td.empty{background:#f2f0ec;color:#c9c5bd}
+  .rowlab{font-family:var(--mono);font-size:10.5px;color:var(--muted);padding-right:6px;text-align:right}
+  .legend{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+  .sw{width:22px;height:13px;border-radius:2px;display:inline-block;border:1px solid #0001}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:1080px){.two{grid-template-columns:1fr}}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media (max-width:1240px){.three{grid-template-columns:1fr}}
+
+  .stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:9px;margin-top:4px}
+  .stat div{background:#fbfaf8;border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+  .stat b{display:block;font-family:var(--mono);font-size:17px;line-height:1.25}
+  .stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .stat div.warn{background:#fdf0e3;border-color:#e8c9a8}
+  .stat div.good{background:#e8f3e8;border-color:#b8ddb8}
+
+  .bar{height:7px;background:#eeebe5;border-radius:4px;overflow:hidden;margin-top:7px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .1s}
+
+  table.insp{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+  table.insp th{background:#f1efea;font-weight:600;padding:4px 6px;text-align:right;font-size:11px}
+  table.insp th:first-child{text-align:center}
+  table.insp td{padding:3px 6px;text-align:right;border-top:1px solid #eeebe5}
+  table.insp td:first-child{text-align:center;font-weight:600}
+  table.insp tr.best td{background:#dcf0dc;font-weight:700}
+  table.insp tr.hit td{background:#fdf0d5}
+  .eq{font-family:var(--mono);font-size:12px;background:#fbfaf8;border:1px solid var(--line);
+      border-radius:6px;padding:8px 10px;margin:6px 0;line-height:1.7}
+  .walkeq{font-family:var(--mono);font-size:12px;background:#fdf0d5;border:1px solid #e8d9a8;
+    border-radius:6px;padding:7px 9px;line-height:1.6}
+  .note{font-size:13px;color:var(--muted);margin:8px 0 0}
+  .hl{background:#fff2c9;border-radius:3px;padding:0 3px}
+  svg{display:block;width:100%;height:auto}
+  table.map{width:100%;border-collapse:collapse;font-size:13px}
+  table.map td,table.map th{padding:6px 8px;border-top:1px solid #eeebe5;vertical-align:top;text-align:left}
+  table.map th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-top:none}
+  table.map td:first-child{color:var(--accent2);font-weight:600;white-space:nowrap}
+  table.q{border-collapse:collapse;font-family:var(--mono);font-size:14px;margin:0 auto}
+  table.q th{background:#f1efea;color:var(--muted);font-size:11px;padding:5px 12px;font-family:var(--sans)}
+  table.q td{padding:6px 16px;text-align:center;border:1px solid #eeebe5;min-width:66px}
+  table.q td.chg{background:#f7c9c9;font-weight:700}
+  pre{font-family:var(--mono);font-size:12px;line-height:1.5;background:#fbfaf8;
+      border:1px solid var(--line);border-radius:8px;padding:13px 15px;overflow-x:auto;margin:0}
+  pre.psu{background:#fdf6e3;border-color:#e8d9a8;font-size:12.5px;line-height:1.62}
+  pre .k{color:#9b1b30;font-weight:600}
+  pre .c{color:#7c8896;font-style:italic}
+  pre .hlq{background:#fff2c9;border-radius:3px;padding:0 2px}
+  .codehead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+  .codehead h2{margin:0}
+  button.copy{border:1px solid var(--line);background:#fff;padding:4px 11px;border-radius:6px;
+    font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  button.copy:hover{background:#f3f1ec}
+  button.copy.done{background:#dcf0dc;border-color:#9ecb9e;color:#1f6b1f}
+</style>
+</head>
+<body>
+
+<header><h1>Q-Learning Bench <span>&nbsp;·&nbsp; 12768/19867/94867 From Data to Action &nbsp;·&nbsp; Lecture 5</span></h1></header>
+
+<nav id="nav">
+  <button data-t="hosp" class="on">1 · Backward induction vs Q-learning</button>
+  <button data-t="track">2 · The five-cell track</button>
+  <button data-t="ask">3 · So what</button>
+  <button data-t="code">4 · Pseudocode and code</button>
+</nav>
+
+<main>
+
+<!-- ============================ TAB 1 ============================ -->
+<section class="tab on" id="tab-hosp">
+  <div class="banner">
+    The same hospital problem, solved two ways. Backward induction is on the left and it is
+    <b>exact</b>, computed in one sweep. Q-learning is on the right and it has to
+    <b>earn</b> its table one visit at a time. Train it and watch how long the gap takes to close.
+  </div>
+
+  <div class="ctl">
+    <button class="act pri" id="h-train">Train 2,000 episodes</button>
+    <button class="act" id="h-train20">+20,000</button>
+    <button class="act" id="h-train200">+200,000</button>
+    <button class="act" id="h-reset">Reset the learner</button>
+    <span class="pill" id="h-status">untrained</span>
+  </div>
+  <div class="bar"><i id="h-bar"></i></div>
+
+  <div class="ctl" style="margin-top:10px">
+    <label>problem size</label>
+    <select id="h-size">
+      <option value="full">full: 12 hours, queue 0..30, up to 12 surge</option>
+      <option value="small">small: 6 hours, queue 0..12, up to 5 surge</option>
+    </select>
+    <label>arrivals</label>
+    <select id="h-prof">
+      <option value="midday">midday peak</option>
+      <option value="flat">flat</option>
+      <option value="morning">morning heavy</option>
+      <option value="evening">evening heavy</option>
+    </select>
+    <label class="pill"><input type="checkbox" id="h-rand" checked> Poisson arrivals</label>
+  </div>
+
+  <div class="ctl">
+    <label>waiting w</label><input type="range" id="h-w" min="5" max="120" value="30" step="5">
+      <span class="val" id="h-wv">$30</span>
+    <label>surge p</label><input type="range" id="h-p" min="50" max="600" value="250" step="25">
+      <span class="val" id="h-pv">$250</span>
+    <label>terminal W</label><input type="range" id="h-W" min="50" max="600" value="200" step="25">
+      <span class="val" id="h-Wv">$200</span>
+    <label>&alpha;</label><input type="range" id="h-a" min="0.02" max="0.6" value="0.3" step="0.02">
+      <span class="val" id="h-av">0.30</span>
+    <label>&epsilon;</label><input type="range" id="h-e" min="0.02" max="1" value="0.3" step="0.02">
+      <span class="val" id="h-ev">0.30</span>
+    <label>&gamma;</label><input type="range" id="h-g" min="0.5" max="1" value="1" step="0.05">
+      <span class="val" id="h-gv">1.00</span>
+    <label class="pill"><input type="checkbox" id="h-dec" checked> decay &alpha; and &epsilon;</label>
+  </div>
+
+  <div class="card">
+    <h2>How the two compare</h2>
+    <div class="stat" id="h-stat"></div>
+    <p class="note" id="h-verdict"></p>
+  </div>
+
+  <div class="three">
+    <div class="card">
+      <h2>Backward induction &nbsp;·&nbsp; exact</h2>
+      <div style="overflow-x:auto"><div id="h-bi"></div></div>
+    </div>
+    <div class="card">
+      <h2>Q-learning &nbsp;·&nbsp; learned</h2>
+      <div style="overflow-x:auto"><div id="h-ql"></div></div>
+    </div>
+    <div class="card">
+      <h2>How often each cell was visited</h2>
+      <div style="overflow-x:auto"><div id="h-vis"></div></div>
+      <p class="note" style="font-size:12px">White means never visited. Q-learning cannot
+      know anything about a situation it has never been in, so those cells still hold their
+      initial value of zero.</p>
+    </div>
+  </div>
+  <div class="legend" id="h-legend"></div>
+</section>
+
+<!-- ============================ TAB 2 ============================ -->
+<section class="tab" id="tab-track">
+  <div class="banner">
+    The five-cell track from the lecture. Small enough that <b>every number is checkable by
+    hand</b>, and small enough that Q-learning actually converges. Step through the eight
+    worked moves, then run it to convergence and compare against the exact answer.
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>The track</h2>
+        <div id="k-track"></div>
+        <div class="ctl" style="margin-top:12px">
+          <button class="act pri" id="k-next">Next step</button>
+          <button class="act" id="k-prev">Back</button>
+          <button class="act" id="k-reset">Reset to step 0</button>
+          <span class="pill" id="k-status">step 0 of 8</span>
+        </div>
+        <div class="walkeq" id="k-eq">Press <b>Next step</b> to make the first move.</div>
+      </div>
+
+      <div class="card">
+        <h2>The Q-table</h2>
+        <div id="k-q"></div>
+        <p class="note" id="k-note"></p>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Run it to convergence</h2>
+        <div class="ctl">
+          <button class="act pri" id="k-run">Run 200,000 episodes</button>
+        </div>
+        <div class="ctl">
+          <label>&epsilon;</label><input type="range" id="k-e" min="0.05" max="0.5" value="0.1" step="0.05">
+            <span class="val" id="k-ev">0.10</span>
+          <label>&gamma;</label><input type="range" id="k-g" min="0.5" max="1" value="0.9" step="0.05">
+            <span class="val" id="k-gv">0.90</span>
+        </div>
+        <div id="k-conv"><p class="note">Run it to see Q-learning and SARSA side by side
+        against the exact optimal values.</p></div>
+      </div>
+
+      <div class="card">
+        <h2>What to look for</h2>
+        <table class="map">
+          <tr><td>&gamma;</td><td>Drop it to 0.5. The <em>values</em> collapse, but the
+              <em>policy</em> stays Right everywhere. Numbers on a dashboard can move a lot
+              while behaviour does not move at all.</td></tr>
+          <tr><td>&epsilon;</td><td>Raise it. Q-learning's converged values do not budge.
+              SARSA's get worse, because SARSA is honestly pricing in its own random
+              steps.</td></tr>
+          <tr><td>Step 4</td><td>The one step where nothing changes. The target already
+              equals the estimate, so the temporal difference error is exactly zero.</td></tr>
+          <tr><td>Step 6</td><td>The agent learns the sinkhole is bad by falling into it.
+              There is no other way for it to find out.</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ TAB 3 ============================ -->
+<section class="tab" id="tab-ask">
+  <div class="banner">
+    Everything below is visible only once you have watched the tables fill in. None of it is
+    in the sales deck.
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h2>What this bench actually demonstrates</h2>
+      <table class="map">
+        <tr><td>The swap</td><td>Q-learning reaches the same answer as backward induction
+            without being told the rules. On tab 2 it lands on the exact optimum. It needs
+            hundreds of thousands of episodes to do that on a five-cell problem.
+            ``No model needed'' is not free. You stop paying for knowledge and start paying
+            for experience.</td></tr>
+        <tr><td>Coverage</td><td>On tab 1, watch the third heatmap. Long queues almost never
+            happen, so those cells are almost never visited, so their values are still whatever
+            you initialised them to. The policy table still looks complete. It is not.</td></tr>
+        <tr><td>Exploration</td><td>Turn &epsilon; down to 0.02 on tab 1 and train. The learner
+            stops finding out about actions it already believes are bad, and it locks in early.
+            &alpha; will not save it. Exploration and learning rate are not substitutes.</td></tr>
+        <tr><td>Cost, not cells</td><td>Compare the realised cost of the two policies rather
+            than the tables. A policy can be close to optimal in money while disagreeing
+            about a great many states that hardly ever occur.</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Questions worth asking about someone else's system</h2>
+      <table class="map">
+        <tr><td>How many trials?</td><td>If it learns from experience, how much experience,
+            and who paid for it? A demo on a toy problem tells you nothing about the bill on
+            a real one.</td></tr>
+        <tr><td>Show me coverage</td><td>Not the output, the visit counts. A model that
+            returns a confident answer for every input is not a model with evidence for every
+            input.</td></tr>
+        <tr><td>Who is the sinkhole?</td><td>If it learns online, somebody absorbs the
+            exploration. In a consumer app that is an irritated user. In a benefits office it
+            is a person whose claim went sideways.</td></tr>
+        <tr><td>Is it recoverable?</td><td>Where a mistake is cheap and reversible, learning
+            off-policy is fine and faster. Where it is not, a method that ignores its own
+            randomness will overstate how well it does in production.</td></tr>
+        <tr><td>Did we need this?</td><td>The most expensive mistake is not picking the wrong
+            algorithm. It is spending data, months and goodwill to learn something you could
+            have written down in an afternoon.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>The two algorithms, side by side</h2>
+    <table class="map">
+      <tr><th>&nbsp;</th><th>Backward induction</th><th>Q-learning</th></tr>
+      <tr><td>Needs</td><td>The arrival distribution, the service rate and every cost, all
+          written down before you start.</td><td>Only the ability to act and to observe what
+          happened.</td></tr>
+      <tr><td>Gives</td><td>The exact cost-to-go and the exact optimal policy.</td>
+          <td>An estimate that improves with experience.</td></tr>
+      <tr><td>Cost</td><td>Arithmetic. One sweep.</td><td>Data. Every cell has to be visited
+          many times.</td></tr>
+      <tr><td>Auditable</td><td>Yes. You can check any cell by hand.</td>
+          <td>Not really. You can check whether it was visited enough to be trusted.</td></tr>
+      <tr><td>Reach for it</td><td>When you can write the dynamics down.</td>
+          <td>When nobody can, but you can interact or simulate.</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ TAB 4 ============================ -->
+<section class="tab" id="tab-code">
+  <div class="banner">
+    The algorithm in words first, then three files you can copy and run. Everything here was
+    executed before it was pasted in: the track script reproduces the eight hand-worked values
+    from the lecture <b>exactly</b>, and lands on the exact optimal Q.
+  </div>
+
+  <div class="card">
+    <h2>The update, in words</h2>
+    <pre class="psu"><span class="c"># This is the shape. Everything else is bookkeeping.</span>
+
+<span class="hlq">New Q value(s,a)  =  (1 - alpha) x Old Q value(s,a)  +  alpha x (new estimate of Q(s,a))</span>
+
+<span class="k">What is alpha?</span>      How much we move towards the new information.
+                    alpha = 0, learn nothing.  alpha = 1, throw away everything we knew.
+
+<span class="k">What is the data?</span>   The reward r, and the next state s'. That is ALL the
+                    environment hands back. Not the model, not the probabilities.
+
+<span class="k">What is the new</span>
+<span class="k">estimate?</span>          The reward from now to the next step,           <span class="c">r</span>
+                    plus everything from s' onward.                <span class="c">gamma x (value of s')</span>
+
+<span class="k">And that last</span>
+<span class="k">term?</span>              Either simulate forward and find out ... or just
+                    <span class="hlq">read it off the table</span>: max Q(s', a').
+                    We can do that <span class="c">because of the very definition of Q:</span>
+                    <span class="c">cumulative future reward, reward to go, from (s,a).</span></pre>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <h2>Pseudocode &nbsp;·&nbsp; reward convention (max)</h2>
+      <pre class="psu">Initialise Q(s,a) = 0 for every state-action pair
+Choose alpha in [0,1], gamma in [0,1]
+
+<span class="k">repeat</span> for each episode:
+    s <span class="k">&lt;-</span> starting state
+    <span class="k">repeat</span> until the episode ends:
+        a  <span class="k">&lt;-</span> choose an action from s   <span class="c">(epsilon-greedy on Q)</span>
+        take a, observe reward r and next state s'
+
+        target = r + gamma * <span class="hlq">max</span> Q(s', a')     <span class="c">over all a'</span>
+        Q(s,a) = (1 - alpha) * Q(s,a) + alpha * target
+
+        s <span class="k">&lt;-</span> s'</pre>
+    </div>
+    <div class="card">
+      <h2>The two things you can change</h2>
+      <pre class="psu"><span class="k">COST instead of REWARD</span>
+    Everything flips sign, and:
+        target = cost + gamma * <span class="hlq">min</span> Q(s', a')
+        act by argmin, not argmax
+    Same algorithm. The hospital problem
+    and Assignment 2 use this form.
+
+<span class="k">SARSA instead of Q-LEARNING</span>
+    One term:
+        Q-learning:  <span class="hlq">max</span> Q(s', a')  over all a'
+        SARSA:       <span class="hlq">Q(s', a')</span> for the a' you
+                     will ACTUALLY take next
+
+    Q-learning assumes you behave greedily
+    next period. With epsilon-greedy you will
+    not. SARSA prices in its own randomness.
+    That is off-policy versus on-policy, and
+    it is the whole difference.</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="codehead">
+      <h2>File 1 &nbsp;·&nbsp; the five-cell track, complete &nbsp;·&nbsp; <code>track.py</code></h2>
+      <button class="copy" data-src="c1">Copy</button>
+    </div>
+    <p class="note" style="margin:0 0 8px">Runs in about a second. Prints the eight hand-worked
+    steps, then trains to convergence and checks itself against the exact answer. If you change
+    one thing in this file and rerun it, you will learn more than from any slide.</p>
+    <pre id="c1">&quot;&quot;&quot;
+The five-cell driving track from Lecture 5, start to finish.
+Self-contained: no imports beyond numpy, runs in about a second.
+
+Reward convention, so we use max.  Positions 0 and 4 end the episode.
+&quot;&quot;&quot;
+import numpy as np
+
+L, R = 0, 1
+ALPHA, GAMMA = 0.1, 0.9
+
+
+def step(pos, action):
+    &quot;&quot;&quot;Return (next_pos, reward, done).&quot;&quot;&quot;
+    nxt = pos - 1 if action == L else pos + 1
+    if nxt == 0:
+        return nxt, -10.0, True          # sinkhole
+    if nxt == 4:
+        return nxt, +10.0, True          # goal
+    return nxt, -1.0, False              # ordinary move
+
+
+def q_update(Q, s, a, r, s2, done, alpha=ALPHA, gamma=GAMMA):
+    &quot;&quot;&quot;One Q-learning update.  This is the whole algorithm.&quot;&quot;&quot;
+    target = r if done else r + gamma * np.max(Q[s2])
+    Q[s, a] = (1 - alpha) * Q[s, a] + alpha * target
+    return Q[s, a]
+
+
+# ---------------------------------------------------------------- part 1
+# The eight moves worked by hand in the lecture.
+EIGHT_STEPS = [(2, R), (3, R), (1, R), (2, R), (3, R), (1, L), (2, L), (1, R)]
+
+Q = np.zeros((5, 2))
+print(f&quot;{&#x27;step&#x27;:&gt;4} {&#x27;cell&#x27;:&gt;8} {&#x27;new value&#x27;:&gt;10}&quot;)
+for i, (s, a) in enumerate(EIGHT_STEPS, 1):
+    s2, r, done = step(s, a)
+    v = q_update(Q, s, a, r, s2, done)
+    print(f&quot;{i:&gt;4} {&#x27;Q(%d,%s)&#x27; % (s, &#x27;LR&#x27;[a]):&gt;8} {v:&gt;10.4f}&quot;)
+
+# ---------------------------------------------------------------- part 2
+# Now let it run, and check it against the exact answer.
+def run(n_episodes=200_000, algo=&quot;Q&quot;, eps=0.1, seed=1):
+    rng = np.random.default_rng(seed)
+    Q = np.zeros((5, 2))
+    pick = lambda s: rng.integers(0, 2) if rng.random() &lt; eps else int(np.argmax(Q[s]))
+    for _ in range(n_episodes):
+        s, a = 2, pick(2)
+        while True:
+            s2, r, done = step(s, a)
+            if done:
+                Q[s, a] += ALPHA * (r - Q[s, a])
+                break
+            a2 = pick(s2)
+            boot = np.max(Q[s2]) if algo == &quot;Q&quot; else Q[s2, a2]   # &lt;- the only difference
+            Q[s, a] += ALPHA * (r + GAMMA * boot - Q[s, a])
+            s, a = s2, a2
+    return Q
+
+# Exact optimal values, by working backwards from the goal.  This is
+# backward induction, and Q-learning has to agree with it.
+q3R = 10.0
+q2R = -1 + GAMMA * q3R
+q1R = -1 + GAMMA * q2R
+print(f&quot;\nexact:      Q(1,R)={q1R:.2f}  Q(2,R)={q2R:.2f}  Q(3,R)={q3R:.2f}&quot;)
+Ql = run(algo=&quot;Q&quot;)
+print(f&quot;Q-learning: Q(1,R)={Ql[1,R]:.2f}  Q(2,R)={Ql[2,R]:.2f}  Q(3,R)={Ql[3,R]:.2f}&quot;)
+Qs = run(algo=&quot;SARSA&quot;)
+print(f&quot;SARSA:      Q(1,R)={Qs[1,R]:.2f}  Q(2,R)={Qs[2,R]:.2f}  Q(3,R)={Qs[3,R]:.2f}&quot;)</pre>
+  </div>
+
+  <div class="card">
+    <div class="codehead">
+      <h2>File 2 &nbsp;·&nbsp; the agents &nbsp;·&nbsp; <code>agents.py</code></h2>
+      <button class="copy" data-src="c2">Copy</button>
+    </div>
+    <p class="note" style="margin:0 0 8px">Cost convention. The method names match
+    <code>D2A_F26_HospitalStaffing.ipynb</code> exactly, because Assignment 2 refers to them by
+    name: <code>choose_action</code>, <code>learn</code>, <code>greedy_policy</code>. SARSA
+    inherits from Q-learning so the only difference in the whole class is one line.</p>
+    <pre id="c2">&quot;&quot;&quot;
+Tabular Q-learning and SARSA, cost convention (we minimise).
+
+The method names match D2A_F26_HospitalStaffing.ipynb exactly, because
+Assignment 2 refers to them: choose_action, learn, greedy_policy.
+Drop this next to any environment that exposes reset() and step(u).
+&quot;&quot;&quot;
+import numpy as np
+
+rng = np.random.default_rng(42)
+
+
+class QLearningAgent:
+    def __init__(self, T, X_MAX, U_MAX, gamma=1.0,
+                 epsilon=1.0, eps_min=0.02, eps_dec=2e-4,
+                 lr=0.3, lr_min=0.05, lr_dec=5e-7):
+        self.T, self.X_MAX, self.U_MAX = T, X_MAX, U_MAX
+        self.gamma = gamma
+        self.epsilon, self.eps_min, self.eps_dec = epsilon, eps_min, eps_dec
+        self.lr, self.lr_min, self.lr_dec = lr, lr_min, lr_dec
+        # hour, queue length, action.  Each +1 because 0 is a real value.
+        self.Q = np.zeros((T + 2, X_MAX + 1, U_MAX + 1), dtype=float)
+
+    def choose_action(self, t, x):
+        &quot;&quot;&quot;Epsilon-greedy.  argmin, not argmax: these are costs.&quot;&quot;&quot;
+        if t &gt; self.T:
+            return 0
+        if rng.random() &lt; self.epsilon:
+            return int(rng.integers(0, self.U_MAX + 1))
+        return int(np.argmin(self.Q[t, x, :]))
+
+    def learn(self, t, x, u, cost, next_state, done):
+        alpha = self.lr
+        t_next, x_next = next_state
+        q_old = self.Q[t, x, u]
+        if done:
+            target = cost
+        else:
+            target = cost + self.gamma * np.min(self.Q[t_next, x_next, :])
+        self.Q[t, x, u] = (1 - alpha) * q_old + alpha * target
+        self.epsilon = max(self.eps_min, self.epsilon - self.eps_dec)
+        self.lr = max(self.lr_min, self.lr - self.lr_dec)   # decays alpha
+
+    def greedy_policy(self):
+        return np.argmin(self.Q[1:self.T + 1, :, :], axis=2).T
+
+    def cost_to_go(self):
+        return np.min(self.Q[1:self.T + 1, :, :], axis=2).T
+
+
+class SARSAAgent(QLearningAgent):
+    &quot;&quot;&quot;Identical, except for one term.  learn() needs the NEXT action.&quot;&quot;&quot;
+
+    def learn(self, t, x, u, cost, next_state, u_next, done):
+        alpha = self.lr
+        t_next, x_next = next_state
+        q_old = self.Q[t, x, u]
+        if done:
+            target = cost
+        else:
+            # Q-learning: cost + gamma * np.min(self.Q[t_next, x_next, :])
+            target = cost + self.gamma * self.Q[t_next, x_next, u_next]
+        self.Q[t, x, u] = (1 - alpha) * q_old + alpha * target
+        self.epsilon = max(self.eps_min, self.epsilon - self.eps_dec)
+        self.lr = max(self.lr_min, self.lr - self.lr_dec)
+
+
+def train(agent, env, n_episodes=4000):
+    scores = []
+    for _ in range(n_episodes):
+        state, done, total = env.reset(), False, 0.0
+        while not done:
+            t, x = state
+            u = agent.choose_action(t, x)
+            next_state, cost, done = env.step(u)
+            agent.learn(t, x, u, cost, next_state, done)
+            state, total = next_state, total + cost
+        scores.append(total)
+    return scores
+
+
+def train_sarsa(agent, env, n_episodes=4000):
+    &quot;&quot;&quot;SARSA must choose the next action BEFORE it can learn.&quot;&quot;&quot;
+    scores = []
+    for _ in range(n_episodes):
+        t, x = env.reset()
+        u = agent.choose_action(t, x)
+        done, total = False, 0.0
+        while not done:
+            next_state, cost, done = env.step(u)
+            t_next, x_next = next_state
+            u_next = agent.choose_action(t_next, x_next) if not done else 0
+            agent.learn(t, x, u, cost, next_state, u_next, done)
+            total += cost
+            t, x, u = t_next, x_next, u_next
+        scores.append(total)
+    return scores</pre>
+  </div>
+
+  <div class="card">
+    <div class="codehead">
+      <h2>File 3 &nbsp;·&nbsp; an environment &nbsp;·&nbsp; <code>env.py</code></h2>
+      <button class="copy" data-src="c3">Copy</button>
+    </div>
+    <p class="note" style="margin:0 0 8px">The agents above will drive anything that exposes
+    <code>reset()</code> and <code>step(u)</code>. That is the whole interface. Swap this file for
+    your own problem and nothing else changes.</p>
+    <pre id="c3">&quot;&quot;&quot;Minimal environment. Anything with reset() and step(u) works with the agents.&quot;&quot;&quot;
+import numpy as np
+rng = np.random.default_rng(42)
+
+
+class HospitalEnvQL:
+    def __init__(self, T=12, X_MAX=70, U_MAX=20, lam=17.0,
+                 w=30.0, W=400.0, wage=500.0, base_docs=10, service_per_doc=2):
+        self.T, self.X_MAX, self.U_MAX = T, X_MAX, U_MAX
+        self.lam, self.w, self.W, self.wage = lam, w, W, wage
+        self.base_docs, self.service_per_doc = base_docs, service_per_doc
+
+    def reset(self, x0=None):
+        self._t = 1
+        self._x = int(rng.integers(0, self.X_MAX + 1)) if x0 is None else int(x0)
+        return (self._t, self._x)
+
+    def step(self, u):
+        t, x = self._t, self._x
+        u = int(np.clip(u, 0, self.U_MAX))
+        cost = self.w * x + self.wage * u                 # immediate cost
+        cap = self.service_per_doc * (self.base_docs + u)
+        d = rng.poisson(self.lam)                          # the randomness
+        x_next = int(np.clip(x + d - cap, 0, self.X_MAX))
+        if t + 1 &gt; self.T:
+            cost += self.W * x_next                        # terminal penalty
+            self._t, self._x = self.T + 1, x_next
+            return (self.T + 1, x_next), cost, True
+        self._t, self._x = t + 1, x_next
+        return (t + 1, x_next), cost, False</pre>
+  </div>
+
+  <div class="card">
+    <h2>How to use these</h2>
+    <table class="map">
+      <tr><td>To check the lecture</td><td>Run file 1. Compare the eight printed values against
+          the slides. Then change gamma to 0.5 and watch the values collapse while the policy
+          stays Right everywhere.</td></tr>
+      <tr><td>For Assignment 2</td><td>Files 2 and 3 are the notebook's classes, standalone.
+          Reading them outside the notebook is often easier than reading them inside it.</td></tr>
+      <tr><td>For your own problem</td><td>Keep file 2. Rewrite file 3. The agent never learns
+          anything about your environment except through <code>step()</code>, which is exactly
+          the point of model-free learning.</td></tr>
+      <tr><td>Before you trust it</td><td>Count visits per cell. If it is single digits, you have
+          a table full of numbers and no evidence. Tab 1 shows what that looks like.</td></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const money = v => '$' + Math.round(v).toLocaleString();
+const pct = v => (100*v).toFixed(1) + '%';
+
+/* deterministic RNG so the room sees the same numbers */
+function mulberry32(a){ return function(){
+  a |= 0; a = a + 0x6D2B79F5 | 0;
+  let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+};}
+
+/* ==================== TAB 1 : hospital ==================== */
+const PROFILES = {
+  midday : [8,12,16,20,22,24,22,20,18,16,12,12],
+  flat   : [17,17,17,17,17,17,17,17,17,17,17,17],
+  morning: [26,24,22,20,17,15,13,12,11,10,9,8],
+  evening: [8,9,10,11,12,13,15,17,20,22,24,26]
+};
+const H = {
+  T:12, XMAX:30, UMAX:12, B:10, cap:2,
+  lam: PROFILES.midday.slice(), random:true, pmf:null,
+  w:30, p:250, W:200, gamma:1, alpha:0.3, eps:0.3, decay:true,
+  J:null, U:null,                 // exact
+  Q:null, N:null,                 // learned
+  eps_run:0, updates:0, rng:null, busy:false
+};
+
+function poissonPmf(lam){
+  const hi = Math.max(4, Math.ceil(lam + 4*Math.sqrt(lam) + 6));
+  const out=[]; let pk=Math.exp(-lam), acc=0;
+  for(let k=0;k<=hi;k++){ out.push(pk); acc+=pk; pk = pk*lam/(k+1); }
+  return out.map(v=>v/acc);
+}
+function hBuildPmf(){
+  H.pmf = H.lam.map(l => H.random ? poissonPmf(l)
+    : (()=>{ const a=new Array(Math.round(l)+1).fill(0); a[Math.round(l)]=1; return a; })());
+}
+function poissonSample(lam, rnd){                 // Knuth
+  const L = Math.exp(-lam); let k=0, p=1;
+  do { k++; p *= rnd(); } while (p > L);
+  return k-1;
+}
+
+/* ---- exact backward induction (same recursion as bi-bench) ---- */
+function hSolveExact(){
+  hBuildPmf();
+  H.J = Array.from({length:H.T+2}, ()=> new Array(H.XMAX+1).fill(null));
+  H.U = Array.from({length:H.T+2}, ()=> new Array(H.XMAX+1).fill(0));
+  for(let x=0;x<=H.XMAX;x++) H.J[H.T+1][x] = H.W*x;
+  for(let t=H.T;t>=1;t--){
+    const pm = H.pmf[t-1];
+    for(let x=0;x<=H.XMAX;x++){
+      let best=Infinity, bu=0;
+      for(let u=0;u<=H.UMAX;u++){
+        const served = H.cap*(H.B+u);
+        let fut=0;
+        for(let d=0; d<pm.length; d++){
+          if(pm[d]===0) continue;
+          const nx = Math.max(0, Math.min(H.XMAX, x + d - served));
+          fut += pm[d] * H.J[t+1][nx];
+        }
+        const tot = H.w*x + H.p*u + H.gamma*fut;
+        if(tot < best - 1e-9){ best=tot; bu=u; }
+      }
+      H.J[t][x]=best; H.U[t][x]=bu;
+    }
+  }
+}
+
+function hResetLearner(){
+  H.Q = Array.from({length:H.T+2}, ()=>
+        Array.from({length:H.XMAX+1}, ()=> new Array(H.UMAX+1).fill(0)));
+  H.N = Array.from({length:H.T+2}, ()=> new Array(H.XMAX+1).fill(0));
+  H.eps_run=0; H.updates=0; H.rng = mulberry32(20260909);
+}
+
+function hQpolicy(t,x){
+  const row = H.Q[t][x]; let b=0;
+  for(let u=1;u<=H.UMAX;u++) if(row[u] < row[b]-1e-12) b=u;
+  return b;
+}
+
+/* one training episode */
+/* alpha and epsilon at the current episode count.  Decaying both is what lets
+   the table actually settle: a fixed alpha keeps overwriting good estimates
+   with noise, so the learner plateaus instead of converging. */
+function hAlpha(){ return H.decay ? Math.max(0.02, H.alpha/(1 + H.eps_run/3000)) : H.alpha; }
+function hEps(){   return H.decay ? Math.max(0.02, H.eps  /(1 + H.eps_run/3000)) : H.eps;   }
+
+function hEpisode(){
+  const rnd = H.rng;
+  const al = hAlpha(), ep = hEps();
+  let t = 1, x = Math.floor(rnd()*(H.XMAX+1));
+  while(true){
+    let u;
+    if(rnd() < ep) u = Math.floor(rnd()*(H.UMAX+1));
+    else u = hQpolicy(t,x);
+    const cost0 = H.w*x + H.p*u;
+    const served = H.cap*(H.B+u);
+    const d = H.random ? poissonSample(H.lam[t-1], rnd) : Math.round(H.lam[t-1]);
+    const xn = Math.max(0, Math.min(H.XMAX, x + d - served));
+    const tn = t+1;
+    const done = tn > H.T;
+    const cost = done ? cost0 + H.W*xn : cost0;
+    let target;
+    if(done) target = cost;
+    else {
+      const row = H.Q[tn][xn]; let m = row[0];
+      for(let k=1;k<=H.UMAX;k++) if(row[k]<m) m=row[k];
+      target = cost + H.gamma*m;
+    }
+    H.Q[t][x][u] = (1-al)*H.Q[t][x][u] + al*target;
+    H.N[t][x]++; H.updates++;
+    if(done) break;
+    t = tn; x = xn;
+  }
+  H.eps_run++;
+}
+
+/* simulate the realised cost of a policy, from an empty waiting room */
+function hSimulate(pol, days, seed){
+  const rnd = mulberry32(seed); let tot=0;
+  for(let i=0;i<days;i++){
+    let t=1, x=0, c=0;
+    while(true){
+      const u = pol(t,x);
+      c += H.w*x + H.p*u;
+      const served = H.cap*(H.B+u);
+      const d = H.random ? poissonSample(H.lam[t-1], rnd) : Math.round(H.lam[t-1]);
+      const xn = Math.max(0, Math.min(H.XMAX, x + d - served));
+      if(t+1 > H.T){ c += H.W*xn; break; }
+      t++; x=xn;
+    }
+    tot += c;
+  }
+  return tot/days;
+}
+
+const RAMP = ['#f7f7f5','#dbe7f0','#b9d2e6','#94bad9','#6fa1cc','#4b87bd','#3a6ea8','#4a5fa0',
+              '#8b3f83','#a5306a','#b52450','#c01a37','#8c0f26'];
+const uColor = u => RAMP[Math.min(u, RAMP.length-1)];
+function visColor(n){
+  if(n===0) return '#ffffff';
+  const m = Math.min(Math.log10(1+n)/3, 1);
+  return `rgba(31,78,121,${0.10 + 0.78*m})`;
+}
+
+function gridHTML(get, color, title){
+  let h = '<table class="dp"><tr><th></th>';
+  for(let t=1;t<=H.T;t++) h += `<th>${t}</th>`;
+  h += '</tr>';
+  for(let x=H.XMAX;x>=0;x--){
+    h += `<tr><td class="rowlab">${x}</td>`;
+    for(let t=1;t<=H.T;t++){
+      const v = get(t,x);
+      h += `<td style="background:${color(v)}" title="hour ${t}, ${x} waiting: ${v}">${v>0?v:''}</td>`;
+    }
+    h += '</tr>';
+  }
+  return h + '</table>';
+}
+
+function hRender(){
+  $('h-bi').innerHTML  = gridHTML((t,x)=>H.U[t][x], uColor);
+  $('h-ql').innerHTML  = gridHTML((t,x)=>hQpolicy(t,x), uColor);
+  $('h-vis').innerHTML = gridHTML((t,x)=>H.N[t][x], visColor);
+
+  // metrics
+  let agree=0, cells=0, unseen=0;
+  for(let t=1;t<=H.T;t++) for(let x=0;x<=H.XMAX;x++){
+    cells++;
+    if(hQpolicy(t,x)===H.U[t][x]) agree++;
+    if(H.N[t][x]===0) unseen++;
+  }
+  const qcells = (H.T+2)*(H.XMAX+1)*(H.UMAX+1);
+  const perCell = H.updates/qcells;
+  const biCost = hSimulate((t,x)=>H.U[t][x], 400, 777);
+  const qlCost = hSimulate((t,x)=>hQpolicy(t,x), 400, 777);
+  const gap = (qlCost-biCost)/Math.max(biCost,1);
+
+  $('h-stat').innerHTML =
+    `<div><span>episodes trained</span><b>${H.eps_run.toLocaleString()}</b></div>
+     <div><span>Q-table cells</span><b>${qcells.toLocaleString()}</b></div>
+     <div class="${perCell<5?'warn':'good'}"><span>updates per cell</span><b>${perCell.toFixed(1)}</b></div>
+     <div class="${unseen>0?'warn':'good'}"><span>states never visited</span><b>${unseen}</b></div>
+     <div><span>policy agreement</span><b>${pct(agree/cells)}</b></div>
+     <div><span>&alpha; now / &epsilon; now</span><b>${hAlpha().toFixed(3)} / ${hEps().toFixed(3)}</b></div>
+     <div><span>cost, exact policy</span><b>${money(biCost)}</b></div>
+     <div class="${gap<0.03?'good':'warn'}"><span>cost, learned policy</span><b>${money(qlCost)}</b></div>
+     <div class="${gap<0.03?'good':'warn'}"><span>cost gap</span><b>${(100*gap).toFixed(1)}%</b></div>`;
+
+  let v;
+  if(H.eps_run===0){
+    v = 'Nothing trained yet. The learned table on the right is all zeros, which means the '
+      + 'greedy policy reads "hire nobody, ever". Train it and watch.';
+  } else if(perCell < 5){
+    v = `About ${perCell.toFixed(1)} updates per cell. That is not an estimate, it is noise with `
+      + `a number attached. The middle table still looks like a policy, and ${unseen} of the `
+      + `${cells} states it claims to cover have never been visited even once.`;
+  } else if(gap < 0.03){
+    v = `The learned policy now costs within ${(100*gap).toFixed(1)}% of the exact one, even though `
+      + `the tables still disagree on ${pct(1-agree/cells)} of cells. Those disagreements are in `
+      + `states that hardly ever happen, which is why they cost so little. Compare money, not cells.`;
+  } else {
+    v = `Getting closer. Cost gap ${(100*gap).toFixed(1)}%, agreement ${pct(agree/cells)}. `
+      + `Keep training, or switch to the small problem and see how much faster it lands.`;
+  }
+  $('h-verdict').textContent = v;
+
+  $('h-status').textContent = H.eps_run ? `${H.eps_run.toLocaleString()} episodes, ${H.updates.toLocaleString()} updates`
+                                        : 'untrained';
+  let lg = '<span>surge doctors:</span>';
+  for(let u=0;u<=Math.min(H.UMAX,12);u+=2)
+    lg += `<span class="sw" style="background:${uColor(u)}"></span><span>${u}</span>`;
+  $('h-legend').innerHTML = lg;
+}
+
+/* chunked training so the browser stays alive and you can watch it move */
+function hTrain(n){
+  if(H.busy) return;
+  H.busy = true;
+  const btns = ['h-train','h-train20','h-train200','h-reset'];
+  btns.forEach(b=>$(b).disabled=true);
+  let done = 0;
+  const chunk = Math.max(200, Math.floor(n/60));
+  (function loop(){
+    const end = Math.min(done+chunk, n);
+    for(; done<end; done++) hEpisode();
+    $('h-bar').style.width = (100*done/n) + '%';
+    if(done < n){ requestAnimationFrame(loop); }
+    else {
+      $('h-bar').style.width = '0%';
+      H.busy = false; btns.forEach(b=>$(b).disabled=false);
+      hRender();
+    }
+  })();
+}
+
+function hApplySize(){
+  if($('h-size').value === 'small'){
+    H.T=6; H.XMAX=12; H.UMAX=5; H.B=6;
+    H.lam = PROFILES[$('h-prof').value].slice(0,6).map(v=>Math.round(v*0.55));
+  } else {
+    H.T=12; H.XMAX=30; H.UMAX=12; H.B=10;
+    H.lam = PROFILES[$('h-prof').value].slice();
+  }
+}
+function hRebuild(){
+  hApplySize();
+  H.w=+$('h-w').value; H.p=+$('h-p').value; H.W=+$('h-W').value;
+  H.alpha=+$('h-a').value; H.eps=+$('h-e').value; H.gamma=+$('h-g').value;
+  H.random = $('h-rand').checked; H.decay = $('h-dec').checked;
+  $('h-wv').textContent = '$'+H.w; $('h-pv').textContent='$'+H.p; $('h-Wv').textContent='$'+H.W;
+  $('h-av').textContent = H.alpha.toFixed(2);
+  $('h-ev').textContent = H.eps.toFixed(2);
+  $('h-gv').textContent = H.gamma.toFixed(2);
+  hSolveExact(); hResetLearner(); hRender();
+}
+
+['h-w','h-p','h-W','h-a','h-e','h-g','h-size','h-prof','h-rand','h-dec'].forEach(id=>{
+  $(id).addEventListener('input', hRebuild);
+});
+$('h-train').onclick    = ()=> hTrain(2000);
+$('h-train20').onclick  = ()=> hTrain(20000);
+$('h-train200').onclick = ()=> hTrain(200000);
+$('h-reset').onclick    = ()=> { hResetLearner(); hRender(); };
+
+/* ==================== TAB 2 : the five-cell track ==================== */
+const K = {
+  alpha:0.1, gamma:0.9,
+  steps:[
+    {p:2,a:'R',n:3,r:-1,  lbl:'Car spawns at 2, action Right, next state 3'},
+    {p:3,a:'R',n:4,r:10,  lbl:'At 3, action Right, next state 4 (destination)'},
+    {p:1,a:'R',n:2,r:-1,  lbl:'Respawn at 1, action Right, next state 2'},
+    {p:2,a:'R',n:3,r:-1,  lbl:'At 2, action Right, next state 3'},
+    {p:3,a:'R',n:4,r:10,  lbl:'At 3, action Right, next state 4 (destination)'},
+    {p:1,a:'L',n:0,r:-10, lbl:'Respawn at 1, action Left, next state 0 (sinkhole)'},
+    {p:2,a:'L',n:1,r:-1,  lbl:'Respawn at 2, action Left, next state 1'},
+    {p:1,a:'R',n:2,r:-1,  lbl:'At 1, action Right, next state 2'}
+  ],
+  at:0, Q:null, last:null
+};
+function kReset(){ K.Q = {1:{L:0,R:0}, 2:{L:0,R:0}, 3:{L:0,R:0}}; K.at=0; K.last=null; }
+function kMaxQ(p){ return (p===0||p===4) ? 0 : Math.max(K.Q[p].L, K.Q[p].R); }
+function kDo(i){
+  const s = K.steps[i];
+  const old = K.Q[s.p][s.a], m = kMaxQ(s.n);
+  const keep = (1-K.alpha)*old, learn = K.alpha*(s.r + K.gamma*m);
+  K.Q[s.p][s.a] = keep + learn;
+  K.last = {s, old, m, keep, learn, val:keep+learn};
+}
+function kTrack(){
+  const pos = K.at>0 ? K.steps[K.at-1].p : 2;
+  const nxt = K.at>0 ? K.steps[K.at-1].n : null;
+  const W=520, Hh=112, cw=88, x0=32, y=42;
+  let g = `<svg viewBox="0 0 ${W} ${Hh}">`;
+  for(let i=0;i<5;i++){
+    const fill = i===0 ? '#f3c9c9' : (i===4 ? '#c9e6c9' : '#ffffff');
+    g += `<rect x="${x0+i*cw}" y="${y}" width="${cw}" height="46" fill="${fill}" stroke="#1b1d21" stroke-width="1.4"/>`;
+    g += `<text x="${x0+i*cw+cw/2}" y="${y+62}" text-anchor="middle" font-size="12" fill="#6b7280">${i}</text>`;
+  }
+  g += `<text x="${x0+cw/2}" y="${y+28}" text-anchor="middle" font-size="10.5" fill="#8c2020">sinkhole</text>`;
+  g += `<text x="${x0+4*cw+cw/2}" y="${y+28}" text-anchor="middle" font-size="10.5" fill="#1f6b1f">goal</text>`;
+  g += `<circle cx="${x0+pos*cw+cw/2}" cy="${y+23}" r="12" fill="#1f4e79"/>`;
+  g += `<text x="${x0+pos*cw+cw/2}" y="${y+27}" text-anchor="middle" font-size="9" fill="#fff">car</text>`;
+  if(nxt!==null){
+    const a = x0+pos*cw+cw/2, b = x0+nxt*cw+cw/2, mid=(a+b)/2;
+    g += `<path d="M ${a} ${y-6} Q ${mid} ${y-34} ${b} ${y-6}" fill="none" stroke="#1f4e79" stroke-width="2.4" marker-end="url(#ar)"/>`;
+    g += `<text x="${mid}" y="${y-38}" text-anchor="middle" font-size="12" fill="#1f4e79">r = ${K.steps[K.at-1].r}</text>`;
+  }
+  g += `<defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="#1f4e79"/></marker></defs></svg>`;
+  return g;
+}
+function kFmt(v){ return Math.abs(v)<1e-9 ? '0' : (+v.toFixed(3)).toString(); }
+function kRender(){
+  $('k-track').innerHTML = kTrack();
+  const ch = K.last ? {p:K.last.s.p, a:K.last.s.a} : null;
+  let h = '<table class="q"><tr><th>Position</th><th>Left (L)</th><th>Right (R)</th></tr>';
+  for(const p of [1,2,3]){
+    h += `<tr><td>${p}</td>`;
+    for(const a of ['L','R']){
+      const hit = ch && ch.p===p && ch.a===a;
+      h += `<td class="${hit?'chg':''}">${kFmt(K.Q[p][a])}</td>`;
+    }
+    h += '</tr>';
+  }
+  $('k-q').innerHTML = h + '</table>';
+  $('k-status').textContent = `step ${K.at} of 8`;
+
+  if(!K.last){
+    $('k-eq').innerHTML = 'Press <b>Next step</b> to make the first move.';
+    $('k-note').textContent = 'All Q-values start at 0.';
+  } else {
+    const L=K.last, s=L.s;
+    $('k-eq').innerHTML =
+      `<b>Step ${K.at}.</b> ${s.lbl}<br>` +
+      `Q(${s.p},${s.a}) &larr; (1&minus;&alpha;)&middot;Q(${s.p},${s.a}) + &alpha;&middot;(r + &gamma;&middot;max Q(${s.n},&middot;))<br>` +
+      `= ${kFmt(1-K.alpha)}&times;${kFmt(L.old)} + ${K.alpha}&times;(${s.r} + ${K.gamma}&times;${kFmt(L.m)})<br>` +
+      `= ${kFmt(L.keep)} + ${kFmt(L.learn)} = <b>${kFmt(L.val)}</b>`;
+    let n = '';
+    if(K.at===4) n = 'First time a learned value feeds backward, through the max. And yet the cell does not move: the target is exactly what Q(2,R) already was, so the temporal difference error is zero.';
+    else if(K.at===6) n = 'The first bad news. The agent found out the sinkhole was there by falling into it. There was no other way.';
+    else if(K.at===7) n = 'max Q(1,.) = max(-1, -0.1) = -0.1. The agent already prefers Right at position 1, so the -1 is not what propagates back. The max protects it.';
+    else if(K.at===8) n = 'Position 2 currently looks slightly bad, so position 1 gets worse too. Early estimates are pessimistic everywhere; the +10 has only propagated one step back so far.';
+    $('k-note').textContent = n;
+  }
+}
+$('k-next').onclick = ()=>{ if(K.at<8){ kDo(K.at); K.at++; kRender(); } };
+$('k-prev').onclick = ()=>{ if(K.at>0){ const t=K.at-1; kReset(); for(let i=0;i<t;i++){ kDo(i); K.at++; } kRender(); } };
+$('k-reset').onclick = ()=>{ kReset(); kRender(); };
+
+/* converged run: Q-learning and SARSA against the exact optimum */
+function trackRun(algo, eps0, decay, nEp, alpha, gamma, seed){
+  const rnd = mulberry32(seed);
+  const Q = [[0,0],[0,0],[0,0],[0,0],[0,0]];       // [pos][0=L,1=R]
+  const pick = (s,e)=> rnd()<e ? (rnd()<0.5?0:1) : (Q[s][0]>=Q[s][1]?0:1);
+  let eps = eps0;
+  for(let ep=0; ep<nEp; ep++){
+    if(decay) eps = eps0*Math.max(0, 1-ep/(0.8*nEp));
+    let s=2, a=pick(s,eps);
+    for(;;){
+      const s2 = a===0 ? s-1 : s+1;
+      const r  = s2===4 ? 10 : (s2===0 ? -10 : -1);
+      const term = (s2===0 || s2===4);
+      let target;
+      if(term) target = r;
+      else {
+        const a2 = pick(s2,eps);
+        target = r + gamma*(algo==='Q' ? Math.max(Q[s2][0],Q[s2][1]) : Q[s2][a2]);
+        Q[s][a] += alpha*(target - Q[s][a]);
+        s = s2; a = a2; continue;
+      }
+      Q[s][a] += alpha*(target - Q[s][a]);
+      break;
+    }
+  }
+  return Q;
+}
+function exactQ(gamma){
+  // work backwards from the goal, exactly as backward induction would
+  const q3R = 10, q2R = -1 + gamma*q3R, q1R = -1 + gamma*q2R;
+  const q1L = -10;
+  const q2L = -1 + gamma*Math.max(q1L, q1R);
+  const q3L = -1 + gamma*Math.max(q2L, q2R);
+  return {'1L':q1L,'1R':q1R,'2L':q2L,'2R':q2R,'3L':q3L,'3R':q3R};
+}
+$('k-run').onclick = ()=>{
+  const eps = +$('k-e').value, gam = +$('k-g').value;
+  $('k-run').disabled = true; $('k-run').textContent = 'running...';
+  setTimeout(()=>{
+    const N = 200000;
+    const runs = [
+      ['Q-learning, fixed &epsilon;', trackRun('Q', eps, false, N, 0.1, gam, 1)],
+      ['SARSA, fixed &epsilon;',      trackRun('S', eps, false, N, 0.1, gam, 1)],
+      ['SARSA, &epsilon; &rarr; 0',   trackRun('S', eps, true,  N, 0.1, gam, 1)]
+    ];
+    const ex = exactQ(gam);
+    const keys = ['1L','1R','2L','2R','3L','3R'];
+    let h = '<table class="insp"><tr><th>&nbsp;</th>';
+    keys.forEach(k=> h += `<th>Q(${k[0]},${k[1]})</th>`);
+    h += '</tr><tr class="best"><td>exact optimal</td>';
+    keys.forEach(k=> h += `<td>${ex[k].toFixed(2)}</td>`);
+    h += '</tr>';
+    for(const [name,Q] of runs){
+      h += `<tr><td style="text-align:left">${name}</td>`;
+      keys.forEach(k=>{
+        const v = Q[+k[0]][k[1]==='L'?0:1];
+        const off = Math.abs(v-ex[k]) > 0.05;
+        h += `<td style="${off?'color:#9b1b30;font-weight:700':''}">${v.toFixed(2)}</td>`;
+      });
+      h += '</tr>';
+    }
+    h += '</table>';
+    h += '<p class="note">Red means it did not land on the exact optimum. Q-learning gets '
+       + 'there whatever &epsilon; is, because its target is the greedy action. SARSA with a '
+       + 'fixed &epsilon; does not, because it is correctly valuing a policy that acts randomly '
+       + 'some of the time. Send &epsilon; to zero and it recovers.</p>';
+    $('k-conv').innerHTML = h;
+    $('k-run').disabled = false; $('k-run').textContent = 'Run 200,000 episodes';
+  }, 30);
+};
+$('k-e').addEventListener('input', e=> $('k-ev').textContent = (+e.target.value).toFixed(2));
+$('k-g').addEventListener('input', e=> $('k-gv').textContent = (+e.target.value).toFixed(2));
+
+/* ==================== copy buttons ==================== */
+document.querySelectorAll('button.copy').forEach(b=>{
+  b.onclick = async ()=>{
+    const txt = $(b.dataset.src).innerText;
+    let ok = false;
+    try { await navigator.clipboard.writeText(txt); ok = true; }
+    catch(e){
+      // file:// is not always a secure context, so fall back
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        ok = document.execCommand('copy'); document.body.removeChild(ta);
+      }catch(e2){ ok = false; }
+    }
+    if(ok){ b.textContent='Copied'; b.classList.add('done');
+            setTimeout(()=>{b.textContent='Copy'; b.classList.remove('done');},1400); }
+    else  { // last resort: select it so the user can hit cmd-C
+            const r=document.createRange(); r.selectNodeContents($(b.dataset.src));
+            const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
+            b.textContent='Press cmd-C'; setTimeout(()=>{b.textContent='Copy';},2000); }
+  };
+});
+
+/* ==================== tabs ==================== */
+document.querySelectorAll('#nav button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); $('tab-'+b.dataset.t).classList.add('on');
+  };
+});
+
+hRebuild();
+kReset(); kRender();
+</script>
+</body>
+</html>
