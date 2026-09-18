@@ -328,10 +328,10 @@ The problem can be formulated as a dynamic decision process with multiple stages
 {
 \checkboxchar{$\Box$} \checkedchar{$\blacksquare$}  % DO NOT CHANGE THIS LINE
 \begin{checkboxes}
-    \choice States refer to the specific node in the network at stages.
-    \choice Actions refer to the decision of which neighboring node to move to next.
+    \CorrectChoice States refer to the specific node in the network at stages.
+    \CorrectChoice Actions refer to the decision of which neighboring node to move to next.
     \choice The number of states depends on the path chosen.
-    \choice The cost function measures the travel time.
+    \CorrectChoice The cost function measures the travel time.
     \choice The cost-to-go value is the minimal travel time spent from home to the current state.
 \end{checkboxes}
 }
@@ -344,8 +344,8 @@ The problem can be formulated as a dynamic decision process with multiple stages
     \choice The first step of BI is to assign cost-to-go values to the home node.
     \choice The first step of BI is to choose the parking lot with the lowest cost.
     \choice BI computes the cost of all possible paths in this network.
-    \choice If two different paths have the same minimum total cost, BI considers either path as optimal.
-    \choice An optimal path must contain optimal sub-paths.
+    \CorrectChoice If two different paths have the same minimum total cost, BI considers either path as optimal.
+    \CorrectChoice An optimal path must contain optimal sub-paths.
 \end{checkboxes}
 }
 
@@ -354,10 +354,10 @@ The problem can be formulated as a dynamic decision process with multiple stages
 {
 \checkboxchar{$\Box$} \checkedchar{$\blacksquare$}  % DO NOT CHANGE THIS LINE
 \begin{checkboxes}
-    \choice Close one of the parking lots
-    \choice Change travel time inside a single neighborhood
+    \CorrectChoice Close one of the parking lots
+    \CorrectChoice Change travel time inside a single neighborhood
     \choice Increase travel time in every node by the same constant
-    \choice Adding extra edges between neighborhoods
+    \CorrectChoice Adding extra edges between neighborhoods
     \choice Rename the node IDs
 \end{checkboxes}
 }
@@ -365,7 +365,11 @@ The problem can be formulated as a dynamic decision process with multiple stages
 
 \item \grade{5} \saq Write the cost-to-go function \textit{(Tip: formualte $J_t(s_t)$ and $J_T(s_T)$ separately)}.
 \begin{answerBox}[height=1.6in]
-
+At the terminal stage $t=T=6$ nothing remains to be decided, so the cost-to-go of a parking lot is just its own travel time.
+\[ J_T(s_T) \;=\; g(s_T), \qquad s_T \in \{\texttt{F1},\dots,\texttt{F6}\} \]
+Every earlier stage is then computed backward for $t = T-1$ down to $t = 1$.
+\[ J_t(s_t) \;=\; \min_{s_{t+1}\in N(s_t)}\bigl\{\, g(s_t) + J_{t+1}(s_{t+1}) \,\bigr\} \;=\; g(s_t) \;+ \min_{s_{t+1}\in N(s_t)} J_{t+1}(s_{t+1}) \]
+Cost sits on the nodes and not on the edges, so $g(s_t)$ is paid whichever neighbor we pick and it factors out of the $\min$. The stored action is $a(s_t) = \arg\min_{s_{t+1}\in N(s_t)} J_{t+1}(s_{t+1})$.
 \end{answerBox}
 
 
@@ -373,13 +377,31 @@ The problem can be formulated as a dynamic decision process with multiple stages
 \\Include the calculation steps from the terminal stage to stage 4.
 What is the action $a(s_4=\texttt{D4})$?
 \begin{answerBox}[height=6in]
+\textbf{Stage 6.} Nothing remains to be decided once we reach a parking lot, so every terminal value is just that node's own travel time.
+\[ J_6(\texttt{F1})=8,\quad J_6(\texttt{F2})=2,\quad J_6(\texttt{F3})=6,\quad J_6(\texttt{F4})=5,\quad J_6(\texttt{F5})=5,\quad J_6(\texttt{F6})=3 \]
 
+\textbf{Stage 5.} From \texttt{D4} the only feasible next states are $N(\texttt{D4})=\{\texttt{E3},\texttt{E4}\}$, so those are the two values we actually need.
+\begin{align*}
+J_5(\texttt{E3}) &= g(\texttt{E3}) + \min\{J_6(\texttt{F3}),\, J_6(\texttt{F4})\} = 7 + \min\{6,\,5\} = 7 + 5 = 12 \\
+J_5(\texttt{E4}) &= g(\texttt{E4}) + \min\{J_6(\texttt{F4}),\, J_6(\texttt{F5})\} = 9 + \min\{5,\,5\} = 9 + 5 = 14
+\end{align*}
+The two continuations from \texttt{E4} are tied at 5, so either one is optimal there.
+
+\textbf{Stage 4.}
+\begin{align*}
+J_4(s_4=\texttt{D4}) &= g(\texttt{D4}) \;+ \min_{s_5 \in N(\texttt{D4})} J_5(s_5)
+= 3 + \min\{\, J_5(\texttt{E3}),\, J_5(\texttt{E4}) \,\} \\
+&= 3 + \min\{12,\, 14\} \;=\; 3 + 12 \;=\; \mathbf{15}
+\end{align*}
+The minimum is attained at \texttt{E3}, so $J_4(s_4=\texttt{D4}) = 15$ and $a(s_4=\texttt{D4}) = \texttt{E3}$. Only five of the 36 nodes were needed to answer this, which is the whole point of working backward instead of enumerating paths.
 \end{answerBox}
 
 
 \item \grade{5} \saq What is the optimal path of actions? Use the node ID.
 \begin{answerBox}[height=2in]
-
+Carrying the same recursion left to stage 1 gives $J_1(s_1=\texttt{A3}) = 23$. Reading the stored actions forward from home then produces the path.
+\[ \texttt{A3} \;\rightarrow\; \texttt{B4} \;\rightarrow\; \texttt{C4} \;\rightarrow\; \texttt{D5} \;\rightarrow\; \texttt{E5} \;\rightarrow\; \texttt{F6} \]
+The travel times add to $7+3+6+3+1+3 = 23$, which matches $J_1(\texttt{A3})$ as it should. Note that \texttt{F2} is the cheapest lot at 2 and we still do not end there, since reaching it costs more than the single unit it saves. \texttt{D4} is not on this path either, even though part (e) valued it, because backward induction values every state and not only the ones we end up visiting.
 \end{answerBox}
 
 \end{enumerate}
@@ -409,10 +431,10 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 {
 \checkboxchar{$\Box$} \checkedchar{$\blacksquare$}  % DO NOT CHANGE THIS LINE
 \begin{checkboxes}
-    \choice It blends old and new estimates using the learning rate $\alpha$.
-    \choice It uses the immediate cost plus the discounted best estimate of future cost.
+    \CorrectChoice It blends old and new estimates using the learning rate $\alpha$.
+    \CorrectChoice It uses the immediate cost plus the discounted best estimate of future cost.
     \choice It requires the full transition model of the environment to run.
-    \choice It is a sample-based approximation of the Bellman optimality equation.
+    \CorrectChoice It is a sample-based approximation of the Bellman optimality equation.
     \choice It ignores rewards or costs when updating.
 \end{checkboxes}
 }
@@ -422,10 +444,10 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 {
 \checkboxchar{$\Box$} \checkedchar{$\blacksquare$}  % DO NOT CHANGE THIS LINE
 \begin{checkboxes}
-    \choice It prevents the agent from prematurely converging to a suboptimal policy.
+    \CorrectChoice It prevents the agent from prematurely converging to a suboptimal policy.
     \choice It guarantees the agent always finds the globally optimal solution.
-    \choice It encourages trying actions with uncertain or unexplored values.
-    \choice It balances the trade-off between learning new information and exploiting known information.
+    \CorrectChoice It encourages trying actions with uncertain or unexplored values.
+    \CorrectChoice It balances the trade-off between learning new information and exploiting known information.
     \choice The agent will still explore sufficiently after removing $\epsilon$-greedy, because the learning rate $\alpha$ provides randomness.
 \end{checkboxes}
 }
@@ -435,10 +457,10 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 {
 \checkboxchar{$\Box$} \checkedchar{$\blacksquare$}  % DO NOT CHANGE THIS LINE
 \begin{checkboxes}
-    \choice Backward induction requires full knowledge of the transition probabilities and costs.
-    \choice Backward induction computes the exact cost-to-go function, while Q-learning estimates it iteratively.
+    \CorrectChoice Backward induction requires full knowledge of the transition probabilities and costs.
+    \CorrectChoice Backward induction computes the exact cost-to-go function, while Q-learning estimates it iteratively.
     \choice Backward induction always converges faster than Q-learning, regardless of problem size.
-    \choice Q-learning learns optimal policies through simulated or real experience.
+    \CorrectChoice Q-learning learns optimal policies through simulated or real experience.
     \choice Q-learning cannot achieve the optimal policy even with infinite training.
 \end{checkboxes}
 }
@@ -446,7 +468,11 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 
 \item \grade{2} \saq When calling the \texttt{step()} function of \texttt{HospitalEnvQL}, one of the results is variable of next state. What does this next state variable include? Explain in words what it/they means/mean in the context of hospital surge staffing.
 \begin{answerBox}[height=2in]
+It is a tuple of two integers, $(t_{\text{next}},\, x_{\text{next}})$, which are the next hour of the day and the number of patients still waiting at the start of that hour.
 
+Inside \texttt{step()} the queue updates as \texttt{x\_next = np.clip(x + d - cap, 0, X\_MAX)}, with \texttt{d = rng.poisson(lam)} and \texttt{cap = 2*(10 + u)}. In simpler terms we take who is already waiting, add the patients who walked in this hour, subtract everyone the 10 base plus $u$ surge doctors can treat at 2 patients per hour, and do not go below zero.
+
+The clock has to be part of the state and not just the queue. Twenty patients waiting at 9am and twenty at 7pm call for completely different decisions, since at 9am there are hours of capacity left to work the queue down while at 7pm every remaining patient triggers the terminal penalty $W = \$300$. That is why the notebook calls $(t,x)$ the augmented state. When $t+1 > T$ the variable becomes $(13, x_{\text{next}})$, which flags the end of the day so the terminal cost is charged.
 \end{answerBox}
 
 
@@ -464,13 +490,23 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 
 \item \grade{2} \saq What does each dimension represent in the context of hospital surge staffing?
 \begin{answerBox}[height=2in]
-
+The table is indexed \texttt{Q[t, x, u]}, so the three dimensions are the stage, the state and the action.
+\begin{itemize}[nosep]
+\item Size \texttt{T+2} is the stage $t$, meaning the hour of the day for $t = 1,\dots,T = 12$, plus an unused index 0 so the hours stay 1-indexed, plus the terminal stage $t = T+1 = 13$.
+\item Size \texttt{X\_MAX+1} is the state $x_t$, the number of patients waiting at the start of hour $t$, running from 0 to \texttt{X\_MAX}.
+\item Size \texttt{U\_MAX+1} is the action $u_t$, the number of on-demand doctors staffed in hour $t$, running from 0 to \texttt{U\_MAX}.
+\end{itemize}
+Each entry is then the expected cumulative cost of staffing $u$ surge doctors when $x$ patients are waiting in hour $t$ and behaving optimally afterward.
 \end{answerBox}
 
 
 \item \grade{2} \saq Why is it \texttt{X\_MAX+1} instead of \texttt{X\_MAX} directly?
 \begin{answerBox}[height=2in]
+The queue length is used directly as a zero-based array index, and it can take any integer value from 0 to \texttt{X\_MAX} inclusive. That is $\texttt{X\_MAX}+1$ distinct states rather than \texttt{X\_MAX}.
 
+Both endpoints are real states that have to be stored. An empty waiting room sits at index 0, and a full waiting room needs index \texttt{X\_MAX} to exist. Sizing the axis at \texttt{X\_MAX} would make $\texttt{X\_MAX}-1$ the largest valid index and raise an \texttt{IndexError} the first time \texttt{np.clip} pushes the queue up to its cap.
+
+The same counting gives \texttt{U\_MAX+1}, since staffing no extra doctors is itself a valid action and it occupies index 0.
 \end{answerBox}
 
 
@@ -489,7 +525,7 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 
 \item \grade{2} \sCode Which line of the \texttt{learn()} function of \texttt{QLearningAgent} in the notebook controls the learning rate decaying?
 \begin{codeBox}[height=1.5in]
-
+self.lr = max(self.lr_min, self.lr - self.lr_dec)
 \end{codeBox}
 
 
@@ -498,9 +534,9 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 \checkboxchar{$\Box$} \checkedchar{$\blacksquare$}  % DO NOT CHANGE THIS LINE
 \begin{checkboxes}
     \choice A high learning rate $\alpha$ always guarantees faster and more stable convergence.
-    \choice Decaying the learning rate $\alpha$ over time helps stabilize learning once Q-values are close to convergence.
-    \choice The discount factor $\gamma$ controls how much future costs are taken into account relative to immediate ones.
-    \choice If $\gamma=1$, future costs are considered equally important as immediate costs.
+    \CorrectChoice Decaying the learning rate $\alpha$ over time helps stabilize learning once Q-values are close to convergence.
+    \CorrectChoice The discount factor $\gamma$ controls how much future costs are taken into account relative to immediate ones.
+    \CorrectChoice If $\gamma=1$, future costs are considered equally important as immediate costs.
     \choice If both $\gamma$ and $\alpha$ are set to zero, Q-learning still converges to the optimal policy.
 \end{checkboxes}
 }
@@ -508,7 +544,13 @@ For your convenience, the solution notebook, named as \texttt{D2A\_A2\_HospitalS
 
 \item \grade{2} \saq The current $a_t$ follows a time-dependent linear decay until it reaches a minimum threshold. How would you modify this schedule to use a non-linear decay instead? \textbf{Express your answer as a formula of the form} $a_t = \dots$. Your proposed schedule could be either time-dependent or time-independent.
 \begin{answerBox}[height=3in]
-    
+I would replace the subtractive step with a multiplicative one, which gives geometric decay down to the same floor.
+\[ \alpha_t \;=\; \max\bigl\{\, \alpha_{\min},\;\; \alpha_0 \cdot \rho^{\,t} \,\bigr\}, \qquad 0 < \rho < 1 \]
+This is the same as $\alpha_t = \max\{\alpha_{\min},\, \alpha_0 e^{-\lambda t}\}$ with $\lambda = -\ln \rho$, and $\alpha_0 = 0.3$, $\rho = 0.9995$, $\alpha_{\min} = 0.05$ would be reasonable here. In code it is one character of change, since \texttt{self.lr - self.lr\_dec} becomes \texttt{self.lr * self.lr\_dec}. Removing a constant fraction each step rather than a constant amount means the rate drops quickly while the Q-values are still crude and then flattens into a long tail of fine tuning.
+
+A time-independent alternative would decay each state and action pair by its own visit count $N_t(x_t,u_t)$.
+\[ \alpha_t \;=\; \frac{\alpha_0}{1 + \kappa\, N_t(x_t, u_t)} \]
+I would prefer this one for the hospital problem, since visits are very uneven and a global clock shrinks $\alpha$ for rarely seen queue lengths before they have learned anything. It also satisfies the Robbins-Monro conditions $\sum_t \alpha_t = \infty$ and $\sum_t \alpha_t^2 < \infty$ that the convergence proof needs.
 \end{answerBox}
 
 
@@ -534,9 +576,9 @@ As you can see, the key difference is that SARSA does not include $\min$ operati
 {
 \checkboxchar{$\Box$} \checkedchar{$\blacksquare$}  % DO NOT CHANGE THIS LINE
 \begin{checkboxes}
-    \choice Q-learning with $\epsilon$-greedy, where $\epsilon = 0.1$
+    \CorrectChoice Q-learning with $\epsilon$-greedy, where $\epsilon = 0.1$
     \choice SARSA with the same $\epsilon$-greedy, $\epsilon = 0.1$
-    \choice SARSA with dynamic $\epsilon$-greedy, where $\epsilon$ is gradually reduced from 0.1 to 0
+    \CorrectChoice SARSA with dynamic $\epsilon$-greedy, where $\epsilon$ is gradually reduced from 0.1 to 0
     \choice All three algorithms above lead to different Q-values
 \end{checkboxes}
 }
@@ -544,7 +586,15 @@ As you can see, the key difference is that SARSA does not include $\min$ operati
 
 \item \grade{2} \saq Reason your answer to the above question.
 \begin{answerBox}[height=4in]
-    
+The three differ in which policy the update target is evaluating, not in how fast they learn.
+
+Q-learning with a fixed $\epsilon$ converges to $Q^*$. Its target bootstraps from $\min_{u_{t+1}} Q_{t+1}(x_{t+1}, u_{t+1})$, which is the value of the best next action rather than the action actually taken. That makes it off-policy and a sample-based version of the Bellman optimality equation, so behaving randomly 10\% of the time changes which cells get visited but not the fixed point they settle on.
+
+SARSA with the same fixed $\epsilon$ does not. Its target bootstraps from $Q_{t+1}(x_{t+1}, u_{t+1})$ where $u_{t+1}$ is the action the $\epsilon$-greedy policy will really take, so it is on-policy and converges to $Q^\pi$ for that exploratory policy instead. Since the policy takes a random and often expensive action 10\% of the time, SARSA is correctly pricing in the cost of its own exploration, and its values stay pessimistic relative to $Q^*$. This is not a bug, it is a different question being answered.
+
+SARSA with $\epsilon$ decayed to zero converges to $Q^*$ again. The policy being evaluated becomes the greedy policy in the limit, so $Q^\pi \to Q^*$ and the on-policy target lines up with the off-policy one.
+
+So options 1 and 3 share the same limit while option 2 does not. The notebook shows this on the 1-D driving example, where the exact $Q^*(1,\text{R})$ is 6.20, Q-learning reaches 6.20, SARSA with a decaying $\epsilon$ reaches 6.18, and SARSA with a fixed $\epsilon$ only reaches about 5.75.
 \end{answerBox}
 
 
@@ -586,7 +636,13 @@ Export the following spreadsheets of your model results as guided in the noteboo
 
 \newpage
 \begin{answerBox}[height=6in]
-    
+Both curves are what the two random forests predict for one fixed scenario as the surge multiplier is swept across its whole feasible range from 1 to 3. The time of day, day of week and weather score are held constant, so the only thing moving along the horizontal axis is the decision itself.
+
+The supply curve rises. A larger multiplier pays drivers more, so more of them make themselves available, and predicted supply climbs from roughly 131 at $s=1$ to roughly 188 at $s=3$. The demand curve falls, since the same multiplier is a higher fare to riders, and predicted demand drops from roughly 141 down to roughly 72 over that range. Neither curve is smooth, because both are tree ensembles and they move in flat steps rather than as continuous functions.
+
+Matches are $\min\{y_S,\, y_D\}$, so the objective is the lower envelope of the two curves and not either curve on its own. Left of the crossing point supply is the short side, so raising the multiplier recruits drivers and adds matches. Right of the crossing demand is the short side, so raising it further only prices riders out and destroys matches. The peak of the lower envelope therefore sits at the crossing, and that is where the black dashed line lands. In my run the optimum came out just below $s = 1.2$ with about 135 matches, a little to the left of where the curves meet near $s = 1.22$, and supply was still the binding side there.
+
+Two things stand out to me. For one, the optimal multiplier is modest. Across all ten scenarios it only ranges from about 1.12 to 1.35 and never approaches the cap of 3, so aggressive surge is counterproductive when the goal is matching rather than revenue. The other point is that this plot is a picture of why the problem is decision dependent. The multiplier is both the decision variable and an input feature to both predictors, so the forecast moves as the decision moves. We cannot predict once and then optimize against a fixed number, which is exactly why the fitted forests are embedded inside the Gurobi model rather than being called before it.
 \end{answerBox}
 
 \end{enumerate}
